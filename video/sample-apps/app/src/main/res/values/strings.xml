@@ -1,0 +1,16 @@
+<resources>
+  <string name="app_name">VideoSampleApp</string>
+  <string name="start">Start</string>
+  <string name="input_file">Input File:</string>
+  <string name="output_file">Output File:</string>
+  <string-array name="QAIP">
+    <item>HDR10 to SDR</item>
+    <item>HDR10+ to HDR10</item>
+    <item>HDR10 to HDR10+</item>
+    <item>ROI</item>
+    <item>QP Override</item>
+    <item>QP Control</item>
+    <item>Slice and Rsync</item>
+    <item>LTR</item>
+  </string-array>
+</resources>
