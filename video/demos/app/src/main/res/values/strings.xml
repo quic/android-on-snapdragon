@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">QtiVideoExt</string>
+    <string name="display_text">Test the QMediaCodecCapabilities API</string>
+</resources>
