@@ -38,7 +38,10 @@ To develop ColorSpaceSampleCode using Android Studio, simply open the project in
         Log.v(TAG, " getAvailableColorSpacesChecked colorSpacesDR :" + colorSpacesDR);
         return colorSpaces;
     }
-	
+
+Here is the log of getting color space values:
+
+07-07 16:11:56.440 8646 8646 V MainActivity: getAvailableColorSpacesChecked colorSpaces :{SRGB, DISPLAY_P3}
 
 (2) App can set a specific device-supported color spac for config stream via Function setColorSpace in Class SessionConfiguration.
     This is the important step for setting the ColorSpace.Named value to cam hal. 
