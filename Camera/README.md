@@ -7,4 +7,5 @@ SPDX-License-Identifier: BSD-3-Clause
 
 
 # License
-License Text Normalizer is licensed under the BSD 3-clause “New” or “Revised” License. See [LICENSE](https://github.com/quic/android-on-snapdragon/blob/master/Camera/LICENSE) for the full license text.
+License Text Normalizer is licensed under the BSD 3-clause “New” or “Revised” License. See [LICENSE]
+(https://github.com/quic/android-on-snapdragon/blob/master/Camera/LICENSE) for the full license text.
