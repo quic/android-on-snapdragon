@@ -7,4 +7,4 @@ SPDX-License-Identifier: Apache-2.0
 
 
 # License
-License Text Normalizer is licensed under the BSD 3-clause “New” or “Revised” License. See [LICENSE](https://github.com/quic/android-on-snapdragon/blob/master/Camera/LICENSE) for the full license text.
+License Text Normalizer is licensed under the Apache-2.0 “New” or “Revised” License. See [LICENSE](https://github.com/quic/android-on-snapdragon/blob/master/Camera/LICENSE) for the full license text.
