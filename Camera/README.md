@@ -1,6 +1,6 @@
 Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
 
-SPDX-License-Identifier: BSD-3-Clause
+SPDX-License-Identifier: Apache-2.0
 
 # QAPI_SampleCode  -- Camera
 ## It's used for sharing how to call new camera APIs
