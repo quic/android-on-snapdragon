@@ -1,3 +1,6 @@
+# Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 package com.example.insensorzoomsamplecode;
 
 import android.content.Context;
