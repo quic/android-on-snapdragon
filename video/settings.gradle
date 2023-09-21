@@ -13,5 +13,6 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "QtiVideoExt"
-include ':demos:app'
 include ':libraries:QtiVideoExt'
+include ':demos:app'
+include ':demos:depthcapture'

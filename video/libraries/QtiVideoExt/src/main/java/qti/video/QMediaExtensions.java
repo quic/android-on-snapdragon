@@ -1,7 +1,7 @@
 /*
  **************************************************************************************************
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause-Clear
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
  **************************************************************************************************
  */
 
@@ -48,12 +48,12 @@ package qti.video;
  * <tr><td>{@link #KEY_ADV_QP_BITRATE_MODE}</td><td>Integer</td><td>Enable application to control the rate control instead of by the encoder.
  * <tr><td>{@link #KEY_ADV_QP_FRAME_QP_VALUE}</td><td>Integer</td><td>QP value to be applied for compressing the next frame.
  * Advance QP must be enabled by setting {@link #KEY_ADV_QP_BITRATE_MODE} to 0</td></tr>
- * <tr><td>{@link #KEY_ER_RESYNC_MARKER_SIZE}</td><td>Integer</td><td>Resync Marker size in bits.
- * <tr><td>{@link #KEY_ER_SLICE_SPACING_SIZE}</td><td>Integer</td><td> Slice spacing size in Macroblocks.
- * <tr><td>{@link #KEY_ER_LTR_MAX_FRAMES}</td><td>Integer</td><td>Maximum number of LTR frames (slots) the encoder can store at any given time.
- * <tr><td>{@link #KEY_ER_LTR_MARK_FRAME}</td><td>Integer</td><td>Index of hte slot to store the LRT frame.
- * <tr><td>{@link #KEY_ER_LTR_USE_FRAME}</td><td>Integer</td><td>Slot index of a previously stored LTR frame to be used as reference.
- * <tr><td>{@link #KEY_ER_LTR_RESPONSE}</td><td>Integer</td><td> Response from encoder to a mark or use operation.
+ * <tr><td>{@link #KEY_RESYNC_MARKER_SIZE}</td><td>Integer</td><td>Resync Marker size in bits.
+ * <tr><td>{@link #KEY_SLICE_SPACING_SIZE}</td><td>Integer</td><td> Slice spacing size in Macroblocks.
+ * <tr><td>{@link #KEY_LTR_MAX_FRAMES}</td><td>Integer</td><td>Maximum number of LTR frames (slots) the encoder can store at any given time.
+ * <tr><td>{@link #KEY_LTR_MARK_FRAME}</td><td>Integer</td><td>Index of the slot to store the LTR frame.
+ * <tr><td>{@link #KEY_LTR_USE_FRAME}</td><td>Integer</td><td>Slot index of a previously stored LTR frame to be used as reference.
+ * <tr><td>{@link #KEY_LTR_RESPONSE}</td><td>Integer</td><td> Response from encoder to a mark or use operation.
  * </table>
  * <br>
  * Extensions are optional and are applied based on best-effort.
@@ -227,7 +227,7 @@ public final class QMediaExtensions {
    * @apiNote It is important to set the ROI bundle (ROI_RECT_INFO + ROI_INFO_TIMESTAMP) ahead of queuing the frame to ensure the ROI
    * data is not missed
    */
-  public static final String KEY_ROI_INFO_TIMESTAMP = "vendor.qti-ext-enc-roiinfo.type";
+  public static final String KEY_ROI_INFO_TIMESTAMP = "vendor.qti-ext-enc-roiinfo.timestamp";
 
   /**
    * A key to enable override of default QP value used by the encoder for I frames.
@@ -265,8 +265,8 @@ public final class QMediaExtensions {
    * <p>
    * This key is accepted via MediaCodec#configure() before the encoder is started
    */
-  public static final String KEY_ER_RESYNC_MARKER_SIZE =
-      "vendor.qti-ext-enc-error-correction.resync-marker-spacing.bits";
+  public static final String KEY_RESYNC_MARKER_SIZE =
+      "vendor.qti-ext-enc-error-correction.resync-marker-spacing-bits";
 
   /**
    * A key to specify the slice spacing in Macbroblocks.
@@ -276,7 +276,7 @@ public final class QMediaExtensions {
    * <p>
    * This key is accepted via MediaCodec#configure() before the encoder is started
    */
-  public static final String KEY_ER_SLICE_SPACING_SIZE = "vendor.qti-ext-enc-slice.spacing";
+  public static final String KEY_SLICE_SPACING_SIZE = "vendor.qti-ext-enc-slice.spacing";
 
 
   /**
@@ -287,7 +287,7 @@ public final class QMediaExtensions {
    * <p>
    * This key is accepted via MediaCodec#configure() before the encoder is started
    */
-  public static final String KEY_ER_LTR_MAX_FRAMES = "vendor.qti-ext-enc-ltr-count.num-ltr-frames";
+  public static final String KEY_LTR_MAX_FRAMES = "vendor.qti-ext-enc-ltr-count.num-ltr-frames";
 
   /**
    * A key to specify the index of the slot to store the LTR Frame.
@@ -298,17 +298,17 @@ public final class QMediaExtensions {
    * If the specified slot has a previously stored LTR frame, it will be replaced with the current frame
    * This key is accepted via MediaCodec#SetParameters() before the encoder is started
    */
-  public static final String KEY_ER_LTR_MARK_FRAME = "vendor.qti-ext-enc-ltr.mark-frame";
+  public static final String KEY_LTR_MARK_FRAME = "vendor.qti-ext-enc-ltr.mark-frame";
 
   /**
-   * A key to specify the slot index of a previously  stored LTR frame to be used as reference.
+   * A key to specify the slot index of a previously stored LTR frame to be used as reference.
    * <p>
    * The associated value is an integer
    *
    * <p>
    * This key is accepted via MediaCodec#setParameters() with every frame
    */
-  public static final String KEY_ER_LTR_USE_FRAME = "vendor.qti-ext-enc-ltr.use-frame";
+  public static final String KEY_LTR_USE_FRAME = "vendor.qti-ext-enc-ltr.use-frame";
 
   /**
    * The encoder use this key to signal a response to mark or use operations.
@@ -318,7 +318,26 @@ public final class QMediaExtensions {
    * <p>
    * This key is accepted via MediaCodec#setParameters() with every frame
    */
-  public static final String KEY_ER_LTR_RESPONSE = "vendor.qti-ext-enc-info-ltr.ltr-use-mark";
+  public static final String KEY_LTR_RESPONSE = "vendor.qti-ext-enc-info-ltr.ltr-use-mark";
+
+  /**
+   * A key to specify the macroblock side length for the QP-bias MBMap for ROI encoding
+   * <p>
+   * The associated value is an integer
+   *
+   * <p>
+   * This key is accepted via MediaCodec#setParameters() with every frame
+   */
+  public static final String KEY_ROI_MAP_MB_SIDE_LENGTH = "vendor.qti-ext-enc-roi-mbmap-info.mb_side_length";
+  /**
+   * A key to specify the mapped region for QP bias for the QP-bias MBMap for ROI encoding
+   * <p>
+   * The associated value is a byte buffer
+   *
+   * <p>
+   * This key is accepted via MediaCodec#setParameters() with every frame
+   */
+  public static final String KEY_ROI_MAP_MB_QP_BIAS_MAP = "vendor.qti-ext-enc-roi-mbmap-info.qp_bias_map";
 
   /**
    * Vendor Extension for ProSight EncodingMode.

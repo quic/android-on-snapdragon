@@ -2,6 +2,10 @@
 
 QtiVideoExt is a support library for utilizing qcom video codec extensions on Android, including codec tunings, quality enhancement etc.
 
+## License
+
+QtiVideoExt is licensed under the Apache-2.0 license. Check out the LICENSE file for more details.
+
 ## Developing QtiVideoExt
 
 #### Project branches

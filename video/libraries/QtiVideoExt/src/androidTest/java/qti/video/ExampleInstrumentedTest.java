@@ -1,7 +1,7 @@
 /*
  **************************************************************************************************
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause-Clear
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
  **************************************************************************************************
  */
 
@@ -31,6 +31,7 @@ import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -61,24 +62,30 @@ public class ExampleInstrumentedTest {
   @BeforeClass
   public static void setup() {
     // needed variables
-    String codecName = "c2.qti.hevc.decoder";
+    String codecNameEnc = "c2.qti.hevc.encoder";
+    String codecNameDec = "c2.qti.hevc.decoder";
     final String mime = "video/hevc";
     final int width = 640;
     final int height = 272;
 
+    // TODO: extend to new platforms
+    Assume.assumeTrue("Only run on Kailua or Lanai",
+        "sm8550".equalsIgnoreCase(Build.SOC_MODEL)
+        || "sm8650".equalsIgnoreCase(Build.SOC_MODEL));
+
     // check if assetFile is found
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
-    if (Build.SOC_MODEL.equalsIgnoreCase("sm8550")
-        || Build.SOC_MODEL.equalsIgnoreCase("sm8650")) {
-      assertNotNull(ext);
-    }
-    if (ext == null) {
+    QMediaCodecCapabilities extEnc = QMediaCodecCapabilities.createForCodec(codecNameEnc, mime, context);
+    QMediaCodecCapabilities extDec = QMediaCodecCapabilities.createForCodec(codecNameDec, mime, context);
+    assertNotNull(extEnc);
+    assertNotNull(extDec);
+
+    if (extEnc == null || extDec == null) {
       Log.e(TAG, "Failed to create QMediaCodecCapabilities instance to check for assetFile");
       isSupportedLegacyDevice = false;
       return;
     }
-    String assetFile = ext.getAssetFile();
+    String assetFile = extEnc.getAssetFile();
     if (assetFile != null) {
       isSupportedLegacyDevice = true;
     }
@@ -88,17 +95,21 @@ public class ExampleInstrumentedTest {
     format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
     format.setInteger(MediaFormat.KEY_BIT_RATE, 10000000);
     format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
-    MediaCodec codec;
+    MediaCodec codecEnc;
+    MediaCodec codecDec;
     try {
-      Log.v(TAG, "Creating Codec " + codecName);
-      codec = MediaCodec.createByCodecName(codecName);
-      codec.configure(format, null, null, 0);
+      Log.v(TAG, "Creating Encoder " + codecNameEnc);
+      codecEnc = MediaCodec.createByCodecName(codecNameEnc);
+      codecEnc.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+      Log.v(TAG, "Creating Decoder " + codecNameDec);
+      codecDec = MediaCodec.createByCodecName(codecNameDec);
+      codecDec.configure(format, null, null, 0);
     } catch (Exception e) {
       Log.e(TAG, "Failed to create codec");
       queryCapsSupported = false;
       return;
     }
-    List<String> vendorParams = codec.getSupportedVendorParameters();
+    List<String> vendorParams = codecEnc.getSupportedVendorParameters();
     final String C2CapsQueryInput_Key = "vendor.qti-ext-caps-query-input.value";
     final String C2CapsQueryOutput_Key = "vendor.qti-ext-caps-query-output.value";
     queryCapsSupported = vendorParams.contains(C2CapsQueryInput_Key)
@@ -116,7 +127,7 @@ public class ExampleInstrumentedTest {
   public void createForCodec_isCorrect() {
     // TODO: TIMING LOGGING
     // needed variables
-    final String codecName = "c2.qti.hevc.decoder";
+    final String codecName = "c2.qti.hevc.encoder";
     final String fakeCodecName = "thisIsNotACodec";
     final String mime = "video/hevc";
     final String fakeMime = "notAMime";
@@ -133,7 +144,7 @@ public class ExampleInstrumentedTest {
     try {
       Log.v(TAG, "Creating Codec " + codecName);
       codec = MediaCodec.createByCodecName(codecName);
-      codec.configure(format, null, null, 0);
+      codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
     } catch (Exception e) {
       Log.e(TAG, "Failed to create codec");
       fail();
@@ -269,10 +280,10 @@ public class ExampleInstrumentedTest {
     assertNull(intValuesParam.getFlags());
     assertNull(intValuesParam.getRange());
 
-    // vendor.qti-ext-vpp-ais.roi-height integer type empty
+    // vendor.qti-ext-enc-info-interlace.mbaff integer type empty
     Log.d(TAG, "checking for integer param with type empty");
     QMediaCodecCapabilities.SupportedValues<Integer> intEmptyParam =
-        ext.getParameterRangeInteger("vendor.qti-ext-vpp-ais.roi-height");
+        ext.getParameterRangeInteger("vendor.qti-ext-enc-info-interlace.mbaff");
     assertNotNull(intEmptyParam);
     assertEquals(intEmptyParam.getDataType(),
         QMediaCodecCapabilities.SupportedValues.DataType.INTEGER);
@@ -302,14 +313,14 @@ public class ExampleInstrumentedTest {
     // try a non-integer param, should fail
     Log.d(TAG, "checking for non-integer param");
     QMediaCodecCapabilities.SupportedValues<Integer> longParam =
-        ext.getParameterRangeInteger("vendor.qti-ext-vpp-frc.ts_start");
+        ext.getParameterRangeInteger("vendor.qti-ext-enc-roiinfo.timestamp");
     assertNull(longParam);
   }
 
   @Test
   public void getParameterRangeLong_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -321,9 +332,9 @@ public class ExampleInstrumentedTest {
     }
     assertNotNull(ext);
 
-    // vendor.qti-ext-vpp-frc.ts_start long type range
+    // vendor.qti-ext-enc-roiinfo.timestamp long type range
     QMediaCodecCapabilities.SupportedValues<Long> longRangeParam =
-        ext.getParameterRangeLong("vendor.qti-ext-vpp-frc.ts_start");
+        ext.getParameterRangeLong("vendor.qti-ext-enc-roiinfo.timestamp");
     assertNotNull(longRangeParam);
     assertEquals(longRangeParam.getDataType(),
         QMediaCodecCapabilities.SupportedValues.DataType.LONG);
@@ -339,7 +350,7 @@ public class ExampleInstrumentedTest {
 
     // try a non-long param, should fail
     QMediaCodecCapabilities.SupportedValues<Long> intParam =
-        ext.getParameterRangeLong("vendor.qti-ext-vpp-ais.roi-height");
+        ext.getParameterRangeLong("vendor.qti-ext-enc-info-interlace.mbaff");
     assertNull(intParam);
   }
 
@@ -369,17 +380,6 @@ public class ExampleInstrumentedTest {
     assertNull(floatRangeParam.getFlags());
     assertNotNull(floatRangeParam.getRange());
 
-    // vendor.qti-ext-vpp-ais.height float any
-    QMediaCodecCapabilities.SupportedValues<Float> floatAnyParam =
-        ext.getParameterRangeFloat("vendor.qti-ext-vpp-ais.height");
-    assertNotNull(floatAnyParam);
-    assertEquals(floatAnyParam.getDataType(),
-        QMediaCodecCapabilities.SupportedValues.DataType.FLOAT);
-    assertEquals(floatAnyParam.getType(), QMediaCodecCapabilities.SupportedValues.Type.ANY);
-    assertNull(floatAnyParam.getValues());
-    assertNull(floatAnyParam.getFlags());
-    assertNull(floatAnyParam.getRange());
-
     // try a non-existent param, should fail
     QMediaCodecCapabilities.SupportedValues<Float> improperParam =
         ext.getParameterRangeFloat("vendor.this-param-does-not-exist");
@@ -387,14 +387,14 @@ public class ExampleInstrumentedTest {
 
     // try a non-float param, should fail
     QMediaCodecCapabilities.SupportedValues<Float> intParam =
-        ext.getParameterRangeFloat("vendor.qti-ext-vpp-ais.roi-height");
+        ext.getParameterRangeFloat("vendor.qti-ext-enc-info-interlace.mbaff");
     assertNull(intParam);
   }
 
   @Test
   public void getParameterRangeForString_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -406,18 +406,18 @@ public class ExampleInstrumentedTest {
     }
     assertNotNull(ext);
 
-    // vendor.qti-ext-vpp-aie.hue-mode string type any
-    QMediaCodecCapabilities.SupportedValues<Integer> stringAnyParam =
-        ext.getParameterRangeForString("vendor.qti-ext-vpp-aie.hue-mode");
-    assertNotNull(stringAnyParam);
+    // vendor.qti-ext-enc-roiinfo.rect-payload string type range
+    QMediaCodecCapabilities.SupportedValues<Integer> stringRangeParam =
+        ext.getParameterRangeForString("vendor.qti-ext-enc-roiinfo.rect-payload");
+    assertNotNull(stringRangeParam);
     // or should this return QMediaCodecCapabilities.SupportedValues.DataType.INTEGER???
-    Log.d(TAG, "returned supported param for vendor.qti-ext-vpp-aie.hue-mode is " + stringAnyParam);
-    assertEquals(stringAnyParam.getDataType(),
+    Log.d(TAG, "returned supported param for vendor.qti-ext-enc-roiinfo.rect-payload is " + stringRangeParam);
+    assertEquals(stringRangeParam.getDataType(),
         QMediaCodecCapabilities.SupportedValues.DataType.STRING);
-    assertEquals(stringAnyParam.getType(), QMediaCodecCapabilities.SupportedValues.Type.RANGE);
-    assertNull(stringAnyParam.getValues());
-    assertNull(stringAnyParam.getFlags());
-    assertNotNull(stringAnyParam.getRange());
+    assertEquals(stringRangeParam.getType(), QMediaCodecCapabilities.SupportedValues.Type.RANGE);
+    assertNull(stringRangeParam.getValues());
+    assertNull(stringRangeParam.getFlags());
+    assertNotNull(stringRangeParam.getRange());
 
     // try a non-existent param, should fail
     QMediaCodecCapabilities.SupportedValues<Integer> improperParam =
@@ -426,7 +426,7 @@ public class ExampleInstrumentedTest {
 
     // try a non-string param, should fail
     QMediaCodecCapabilities.SupportedValues<Integer> intParam =
-        ext.getParameterRangeForString("vendor.qti-ext-vpp-ais.roi-height");
+        ext.getParameterRangeForString("vendor.qti-ext-enc-info-interlace.mbaff");
     assertNull(intParam);
   }
 
@@ -465,7 +465,7 @@ public class ExampleInstrumentedTest {
 
     // try a non-bytebuffer param, should fail
     QMediaCodecCapabilities.SupportedValues<Integer> intParam =
-        ext.getParameterRangeForByteBuffer("vendor.qti-ext-vpp-ais.roi-height");
+        ext.getParameterRangeForByteBuffer("vendor.qti-ext-enc-info-interlace.mbaff");
     assertNull(intParam);
   }
 
@@ -508,7 +508,7 @@ public class ExampleInstrumentedTest {
   @Test
   public void getSupportedParameterRanges_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -566,7 +566,7 @@ public class ExampleInstrumentedTest {
   @Test
   public void isSupportedDevice_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -620,7 +620,7 @@ public class ExampleInstrumentedTest {
   @Test
   public void isLegacyDevice_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -684,7 +684,7 @@ public class ExampleInstrumentedTest {
   @Test
   public void getParamDataType_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -782,7 +782,7 @@ public class ExampleInstrumentedTest {
   @Test
   public void getParamRangeType_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -852,7 +852,7 @@ public class ExampleInstrumentedTest {
   @Test
   public void checkForUnsignedRange_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -920,7 +920,7 @@ public class ExampleInstrumentedTest {
   @Test
   public void getRangeForAny_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -1026,7 +1026,7 @@ public class ExampleInstrumentedTest {
   @Test
   public void getValuesFromJson_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -1120,7 +1120,7 @@ public class ExampleInstrumentedTest {
   @Test
   public void getRangeFromJson_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -1223,7 +1223,7 @@ public class ExampleInstrumentedTest {
   @Test
   public void getParameterType_isCorrect() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    String codecName = "c2.qti.hevc.decoder";
+    String codecName = "c2.qti.hevc.encoder";
     String mime = "video/hevc";
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
@@ -1389,14 +1389,18 @@ public class ExampleInstrumentedTest {
     QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(codecName, mime, context);
     long end1 = System.nanoTime();
     Log.d(TAG, "Time taken by createForCodec in nanoseconds " + (end1 - start1));
+    String codecNameEnc = "c2.qti.hevc.encoder";
+    QMediaCodecCapabilities extEnc = QMediaCodecCapabilities.createForCodec(codecNameEnc, mime, context);
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
       Log.e(TAG,
           "Not a supported device for QMediaCodecCapabilities;"
               + " skipping test logFunctionCallTimings");
       assertNull(ext);
+      assertNull(extEnc);
       return;
     }
     assertNotNull(ext);
+    assertNotNull(extEnc);
 
     // vendor.qti-ext-dec-info-crop.height integer type range
     start1 = System.nanoTime();
@@ -1406,10 +1410,10 @@ public class ExampleInstrumentedTest {
     Log.d(TAG, "Time taken by getParameterRangeInteger in nanoseconds " + (end1 - start1));
     assertNotNull(intRangeParam);
 
-    // vendor.qti-ext-vpp-frc.ts_start long type range
+    // vendor.qti-ext-enc-roiinfo.timestamp long type range
     start1 = System.nanoTime();
     QMediaCodecCapabilities.SupportedValues<Long> longRangeParam =
-        ext.getParameterRangeLong("vendor.qti-ext-vpp-frc.ts_start");
+        extEnc.getParameterRangeLong("vendor.qti-ext-enc-roiinfo.timestamp");
     end1 = System.nanoTime();
     Log.d(TAG, "Time taken by getParameterRangeLong in nanoseconds " + (end1 - start1));
     assertNotNull(longRangeParam);
@@ -1422,13 +1426,13 @@ public class ExampleInstrumentedTest {
     Log.d(TAG, "Time taken by getParameterRangeFloat in nanoseconds " + (end1 - start1));
     assertNotNull(floatRangeParam);
 
-    // vendor.qti-ext-vpp-aie.hue-mode string type any
+    // vendor.qti-ext-enc-roiinfo.rect-payload string type range
     start1 = System.nanoTime();
-    QMediaCodecCapabilities.SupportedValues<Integer> stringAnyParam =
-        ext.getParameterRangeForString("vendor.qti-ext-vpp-aie.hue-mode");
+    QMediaCodecCapabilities.SupportedValues<Integer> StringRangeParam =
+        extEnc.getParameterRangeForString("vendor.qti-ext-enc-roiinfo.rect-payload");
     end1 = System.nanoTime();
     Log.d(TAG, "Time taken by getParameterRangeForString in nanoseconds " + (end1 - start1));
-    assertNotNull(stringAnyParam);
+    assertNotNull(StringRangeParam);
 
     // vendor.qti-ext-dec-info-misr.value byte_buffer type range
     start1 = System.nanoTime();
@@ -1444,76 +1448,14 @@ public class ExampleInstrumentedTest {
     end1 = System.nanoTime();
     Log.d(TAG, "Time taken by getSupportedParameterRanges in nanoseconds " + (end1 - start1));
     assertNotNull(supportedParamRanges);
-
-    // timing after supportedParamRanges has queried everything already
-
-    // vendor.qti-ext-dec-info-crop.height integer type range
-    start1 = System.nanoTime();
-    intRangeParam = ext.getParameterRangeInteger("vendor.qti-ext-dec-info-crop.height");
-    end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getParameterRangeInteger"
-            + " (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
-    assertNotNull(intRangeParam);
-
-    // vendor.qti-ext-vpp-frc.ts_start long type range
-    start1 = System.nanoTime();
-    longRangeParam = ext.getParameterRangeLong("vendor.qti-ext-vpp-frc.ts_start");
-    end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getParameterRangeLong (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
-    assertNotNull(longRangeParam);
-
-    // vendor.qti-ext-dec-output-render-frame-rate.value float range
-    start1 = System.nanoTime();
-    floatRangeParam =
-        ext.getParameterRangeFloat(
-            "vendor.qti-ext-dec-output-render-frame-rate.value");
-    end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getParameterRangeFloat"
-            + " (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
-    assertNotNull(floatRangeParam);
-
-    // vendor.qti-ext-vpp-aie.hue-mode string type any
-    start1 = System.nanoTime();
-    stringAnyParam = ext.getParameterRangeForString("vendor.qti-ext-vpp-aie.hue-mode");
-    end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getParameterRangeForString"
-            + " (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
-    assertNotNull(stringAnyParam);
-
-    // vendor.qti-ext-dec-info-misr.value byte_buffer type range
-    start1 = System.nanoTime();
-    byteBufferRangeParam = ext.getParameterRangeForByteBuffer(
-        "vendor.qti-ext-dec-info-misr.value");
-    end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getParameterRangeForByteBuffer"
-            + " (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
-    assertNotNull(byteBufferRangeParam);
-
-    start1 = System.nanoTime();
-    supportedParamRanges = ext.getSupportedParameterRanges();
-    end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getSupportedParameterRanges"
-            + " (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
-    assertNotNull(supportedParamRanges);
   }
 
   // test for timing main functions in QMediaCodecCapabilities
   @Test
   public void logFunctionCallTimingsInputCodec() {
     final Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    final String codecName = "c2.qti.hevc.decoder";
+    final String codecNameEnc = "c2.qti.hevc.encoder";
+    final String codecNameDec = "c2.qti.hevc.decoder";
     final String mime = "video/hevc";
     final int width = 640;
     final int height = 272;
@@ -1522,41 +1464,50 @@ public class ExampleInstrumentedTest {
     format.setInteger(MediaFormat.KEY_BIT_RATE, 10000000);
     format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
 
+    MediaCodec encCodec = null;
     MediaCodec decCodec = null;
     try {
-      decCodec = MediaCodec.createByCodecName(codecName);
+      encCodec = MediaCodec.createByCodecName(codecNameEnc);
+      encCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+      decCodec = MediaCodec.createByCodecName(codecNameDec);
       decCodec.configure(format, null, null, 0);
     } catch (IOException e) {
-      Log.e(TAG, "failed to create codecs for testing");
+      Log.e(TAG, "failed to create codecs for testing (logFunctionCallTimingsInputCodec)");
       fail();
     }
 
-    // decoder (should be same as c2.qti.hevc.decoder)
+    // encoder (should be same as c2.qti.hevc.encoder)
     long start1 = System.nanoTime();
-    QMediaCodecCapabilities ext = QMediaCodecCapabilities.createForCodec(decCodec, mime, context);
+    QMediaCodecCapabilities extEnc = QMediaCodecCapabilities.createForCodec(encCodec, mime, context);
     long end1 = System.nanoTime();
-    Log.d(TAG, "Time taken by createForCodec(decCodec) in nanoseconds " + (end1 - start1));
+    Log.d(TAG, "Time taken by createForCodec(encCodec) in nanoseconds (encoder) " + (end1 - start1));
+    start1 = System.nanoTime();
+    QMediaCodecCapabilities extDec = QMediaCodecCapabilities.createForCodec(decCodec, mime, context);
+    end1 = System.nanoTime();
+    Log.d(TAG, "Time taken by createForCodec(encCodec) in nanoseconds (decoder) " + (end1 - start1));
     if (!queryCapsSupported && !isSupportedLegacyDevice) {
       Log.e(TAG,
           "Not a supported device for QMediaCodecCapabilities;"
               + " skipping test logFunctionCallTimingsInputCodec");
-      assertNull(ext);
+      assertNull(extEnc);
+      assertNull(extDec);
       return;
     }
-    assertNotNull(ext);
+    assertNotNull(extEnc);
+    assertNotNull(extDec);
 
     // vendor.qti-ext-dec-info-crop.height integer type range
     start1 = System.nanoTime();
     QMediaCodecCapabilities.SupportedValues<Integer> intRangeParam =
-        ext.getParameterRangeInteger("vendor.qti-ext-dec-info-crop.height");
+        extDec.getParameterRangeInteger("vendor.qti-ext-dec-info-crop.height");
     end1 = System.nanoTime();
     Log.d(TAG, "Time taken by getParameterRangeInteger in nanoseconds " + (end1 - start1));
     assertNotNull(intRangeParam);
 
-    // vendor.qti-ext-vpp-frc.ts_start long type range
+    // vendor.qti-ext-enc-roiinfo.timestamp long type range
     start1 = System.nanoTime();
     QMediaCodecCapabilities.SupportedValues<Long> longRangeParam =
-        ext.getParameterRangeLong("vendor.qti-ext-vpp-frc.ts_start");
+        extEnc.getParameterRangeLong("vendor.qti-ext-enc-roiinfo.timestamp");
     end1 = System.nanoTime();
     Log.d(TAG, "Time taken by getParameterRangeLong in nanoseconds " + (end1 - start1));
     assertNotNull(longRangeParam);
@@ -1564,92 +1515,43 @@ public class ExampleInstrumentedTest {
     // vendor.qti-ext-dec-output-render-frame-rate.value float range
     start1 = System.nanoTime();
     QMediaCodecCapabilities.SupportedValues<Float> floatRangeParam =
-        ext.getParameterRangeFloat("vendor.qti-ext-dec-output-render-frame-rate.value");
+        extDec.getParameterRangeFloat("vendor.qti-ext-dec-output-render-frame-rate.value");
     end1 = System.nanoTime();
     Log.d(TAG, "Time taken by getParameterRangeFloat in nanoseconds " + (end1 - start1));
     assertNotNull(floatRangeParam);
 
-    // vendor.qti-ext-vpp-aie.hue-mode string type any
+    // vendor.qti-ext-enc-roiinfo.rect-payload string type range
     start1 = System.nanoTime();
-    QMediaCodecCapabilities.SupportedValues<Integer> stringAnyParam =
-        ext.getParameterRangeForString("vendor.qti-ext-vpp-aie.hue-mode");
+    QMediaCodecCapabilities.SupportedValues<Integer> stringRangeParam =
+        extEnc.getParameterRangeForString("vendor.qti-ext-enc-roiinfo.rect-payload");
     end1 = System.nanoTime();
     Log.d(TAG, "Time taken by getParameterRangeForString in nanoseconds " + (end1 - start1));
-    assertNotNull(stringAnyParam);
+    assertNotNull(stringRangeParam);
 
     // vendor.qti-ext-dec-info-misr.value byte_buffer type range
     start1 = System.nanoTime();
     QMediaCodecCapabilities.SupportedValues<Integer> byteBufferRangeParam =
-        ext.getParameterRangeForByteBuffer("vendor.qti-ext-dec-info-misr.value");
+        extDec.getParameterRangeForByteBuffer("vendor.qti-ext-dec-info-misr.value");
     end1 = System.nanoTime();
     Log.d(TAG, "Time taken by getParameterRangeForByteBuffer in nanoseconds " + (end1 - start1));
     assertNotNull(byteBufferRangeParam);
 
     start1 = System.nanoTime();
     Map<String, QMediaCodecCapabilities.SupportedValues> supportedParamRanges =
-        ext.getSupportedParameterRanges();
+        extEnc.getSupportedParameterRanges();
     end1 = System.nanoTime();
-    Log.d(TAG, "Time taken by getSupportedParameterRanges in nanoseconds " + (end1 - start1));
+    Log.d(TAG, "Time taken by getSupportedParameterRanges in nanoseconds (encoder)" + (end1 - start1));
     assertNotNull(supportedParamRanges);
-
-    // timing after supportedParamRanges has queried everything already
-
-    // vendor.qti-ext-dec-info-crop.height integer type range
-    start1 = System.nanoTime();
-    intRangeParam = ext.getParameterRangeInteger("vendor.qti-ext-dec-info-crop.height");
-    end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getParameterRangeInteger (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
-    assertNotNull(intRangeParam);
-
-    // vendor.qti-ext-vpp-frc.ts_start long type range
-    start1 = System.nanoTime();
-    longRangeParam = ext.getParameterRangeLong("vendor.qti-ext-vpp-frc.ts_start");
-    end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getParameterRangeLong (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
-    assertNotNull(longRangeParam);
-
-    // vendor.qti-ext-dec-output-render-frame-rate.value float range
-    start1 = System.nanoTime();
-    floatRangeParam =
-        ext.getParameterRangeFloat("vendor.qti-ext-dec-output-render-frame-rate.value");
-    end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getParameterRangeFloat (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
-    assertNotNull(floatRangeParam);
-
-    // vendor.qti-ext-vpp-aie.hue-mode string type any
-    start1 = System.nanoTime();
-    stringAnyParam = ext.getParameterRangeForString("vendor.qti-ext-vpp-aie.hue-mode");
-    end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getParameterRangeForString (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
-    assertNotNull(stringAnyParam);
-
-    // vendor.qti-ext-dec-info-misr.value byte_buffer type range
-    start1 = System.nanoTime();
-    byteBufferRangeParam = ext.getParameterRangeForByteBuffer("vendor.qti-ext-dec-info-misr.value");
-    end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getParameterRangeForByteBuffer"
-            + " (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
-    assertNotNull(byteBufferRangeParam);
+    assertFalse(supportedParamRanges.isEmpty());
+    encCodec.release();
 
     start1 = System.nanoTime();
-    supportedParamRanges = ext.getSupportedParameterRanges();
+    supportedParamRanges =
+        extDec.getSupportedParameterRanges();
     end1 = System.nanoTime();
-    Log.d(TAG,
-        "Time taken by getSupportedParameterRanges (after full query has occurred) in nanoseconds "
-            + (end1 - start1));
+    Log.d(TAG, "Time taken by getSupportedParameterRanges in nanoseconds (decoder)" + (end1 - start1));
     assertNotNull(supportedParamRanges);
-
-    decCodec.release();
+    assertFalse(supportedParamRanges.isEmpty());
   }
 
   // parseNestedJsonParam can assume this works
@@ -1700,17 +1602,19 @@ public class ExampleInstrumentedTest {
     validateExtensionName(QMediaExtensions.KEY_ROI_INFO_TIMESTAMP);
     validateExtensionName(QMediaExtensions.KEY_ADV_QP_BITRATE_MODE);
     validateExtensionName(QMediaExtensions.KEY_ADV_QP_FRAME_QP_VALUE);
-    validateExtensionName(QMediaExtensions.KEY_ER_RESYNC_MARKER_SIZE);
-    validateExtensionName(QMediaExtensions.KEY_ER_SLICE_SPACING_SIZE);
-    validateExtensionName(QMediaExtensions.KEY_ER_LTR_MAX_FRAMES);
-    validateExtensionName(QMediaExtensions.KEY_ER_LTR_MARK_FRAME);
-    validateExtensionName(QMediaExtensions.KEY_ER_LTR_USE_FRAME);
-    validateExtensionName(QMediaExtensions.KEY_ER_LTR_RESPONSE);
+    validateExtensionName(QMediaExtensions.KEY_RESYNC_MARKER_SIZE);
+    validateExtensionName(QMediaExtensions.KEY_SLICE_SPACING_SIZE);
+    validateExtensionName(QMediaExtensions.KEY_LTR_MAX_FRAMES);
+    validateExtensionName(QMediaExtensions.KEY_LTR_MARK_FRAME);
+    validateExtensionName(QMediaExtensions.KEY_LTR_USE_FRAME);
+    validateExtensionName(QMediaExtensions.KEY_LTR_RESPONSE);
     validateExtensionName(QMediaExtensions.KEY_INIT_QP_I_FRAME_ENABLE);
     validateExtensionName(QMediaExtensions.KEY_INIT_QP_I_FRAME_ENABLE);
     validateExtensionName(QMediaExtensions.KEY_INIT_QP_I_FRAME_ENABLE);
     validateExtensionName(QMediaExtensions.KEY_INIT_QP_I_FRAME_ENABLE);
     validateExtensionName(QMediaExtensions.KEY_INIT_QP_I_FRAME_ENABLE);
+    validateExtensionName(QMediaExtensions.KEY_ROI_MAP_MB_SIDE_LENGTH);
+    validateExtensionName(QMediaExtensions.KEY_ROI_MAP_MB_QP_BIAS_MAP);
   }
 
   @Test
