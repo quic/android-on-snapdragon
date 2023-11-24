@@ -1,7 +1,15 @@
+
+/*==============================================================================
+ *  Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ *   SPDX-License-Identifier: Apache-2.0
+ *===============================================================================
+ */
+
 package com.example.VideoSampleApp;
 
 import static com.example.VideoSampleApp.MainActivity.TIMEOUT_USEC;
 
+import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
@@ -15,6 +23,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import qti.video.QMediaExtensions;
+
 public class QpControlEncode {
   private final String TAG = "QP_Control";
   private final MainActivity mainActivity;
@@ -22,22 +32,29 @@ public class QpControlEncode {
   private final MediaCodec.BufferInfo Encodecinfo = new MediaCodec.BufferInfo();
   List<String> supportedExtensions;
   boolean CodecError = false, mDecodeoutputDone = false, mDecodeinputDone = false;
-  int D_InputFrame = 0, D_OutputFrame = 0, E_OutputFrame = 0;
-  private int I_FRAME_INTERVAL, mTrackID = -1;
+  private final int flag = 0;
+  private int D_InputFrame = 0;
+  private int D_OutputFrame = 0;
+  private int E_OutputFrame = 0;
+  private int mBitrate;
+  private int I_FRAME_INTERVAL;
+  private int mTrackID = -1;
   private String mime = null, mInput;
-  private Surface mSurface = null;
+  private Surface D_Surface = null;
   private MediaCodec mEncodec = null, mDecodec = null;
   private MediaExtractor extractor;
   private MediaFormat format = null, EncoderFormat, DecoderFormat;
   private MediaMuxer mMuxer;
+  private GFXSurface D_GFXSource;
 
   QpControlEncode(MainActivity activity) {
     mainActivity = activity;
   }
 
-  void runQP_Control(String fileInput, String fileOut, int FRAME_INTERVAL)
+  void runQP_Control(String fileInput, String fileOut, int Bitrate, int FRAME_INTERVAL)
       throws Exception {
     this.mInput = fileInput;
+    mBitrate = Bitrate;
     I_FRAME_INTERVAL = FRAME_INTERVAL;
     int muxerFormat = MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4;
     mMuxer = new MediaMuxer(fileOut, muxerFormat);
@@ -73,8 +90,7 @@ public class QpControlEncode {
     Log.i(TAG, "hasCacheReachedEndOfStream: " + extractor.hasCacheReachedEndOfStream());
     EncoderFormat = DecoderFormat = format;
     EncoderFormat.setFloat(MediaFormat.KEY_I_FRAME_INTERVAL, I_FRAME_INTERVAL);
-
-
+    EncoderFormat.setInteger(MediaFormat.KEY_BIT_RATE, mBitrate);
     EncoderFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
     EncoderFormat.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.HEVCProfileMain);
     EncoderFormat.setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.HEVCMainTierLevel4);
@@ -87,7 +103,7 @@ public class QpControlEncode {
     supportedExtensions = mEncodec.getSupportedVendorParameters();
   }
 
-  private void startTrascode() {
+  private void startTrascode() throws Exception {
     while (!CodecError) {
       Log.i(TAG, D_InputFrame + " D_InputFrame :: D_OutputFrame " + D_OutputFrame + " :: E_OutputFrame :: " + E_OutputFrame);
       if (!mDecodeinputDone) Decodeinput();
@@ -107,9 +123,14 @@ public class QpControlEncode {
       throw new Exception("KEY_ADV_QP_BITRATE_MODE Not supported ");
 
     mEncodec.configure(EncoderFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-    mSurface = mEncodec.createInputSurface();
-    if (!mSurface.isValid()) throw new Exception("Encodec Surface is not valid");
-    mDecodec.configure(DecoderFormat, mSurface, null, 0);
+    Surface e_Surface = mEncodec.createInputSurface();
+    if (!e_Surface.isValid()) throw new Exception("Encodec Surface is not valid");
+    GFXSurface e_GFXSource = new GFXSurface(e_Surface);
+    e_GFXSource.makeCurrent();
+
+    D_GFXSource = new GFXSurface();
+    D_Surface = D_GFXSource.createInputSurface();
+    mDecodec.configure(DecoderFormat, D_Surface, null, flag);
     mDecodec.start();
     mEncodec.start();
 
@@ -157,7 +178,7 @@ public class QpControlEncode {
     }
   }
 
-  private void Decodeoutput() {
+  private void Decodeoutput() throws Exception {
     int mDecodecoutIndex = mDecodec.dequeueOutputBuffer(Decodecinfo, TIMEOUT_USEC);
     switch (mDecodecoutIndex) {
       case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
@@ -172,7 +193,14 @@ public class QpControlEncode {
       default:
         mDecodec.getOutputBuffer(mDecodecoutIndex);
         D_OutputFrame++;
-        mDecodec.releaseOutputBuffer(mDecodecoutIndex, mSurface != null);
+        boolean doRender = (Decodecinfo.size != 0);
+        mDecodec.releaseOutputBuffer(mDecodecoutIndex, D_Surface != null);
+        if (doRender) {
+          SurfaceTexture texture = D_GFXSource.awaitNewImage();
+          D_GFXSource.drawImage();
+          GFXSurface.setPresentationTime(Decodecinfo.presentationTimeUs * 1000);
+          GFXSurface.swapBuffers();
+        }
         break;
     }
     if ((Decodecinfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {

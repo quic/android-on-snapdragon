@@ -12,5 +12,11 @@ dependencyResolutionManagement {
   mavenCentral()
   }
 }
+sourceControl {
+  gitRepository("https://github.com/quic/android-on-snapdragon.git") {
+    producesModule("org.gradle.cpp-samples:utilities")
+    rootDir = "video/libraries/QtiVideoExt"
+  }
+}
 rootProject.name = "VideoSampleApp"
 include ':app'

@@ -3,14 +3,20 @@
   <string name="start">Start</string>
   <string name="input_file">Input File:</string>
   <string name="output_file">Output File:</string>
-  <string-array name="QAIP">
+  <string name="extensions">Extensions</string>
+  <string name="feature">Feature</string>
+  <string-array name="QAIP_extensions">
+    <item>ROI</item>
+    <item>LTR</item>
+    <item>QP Control</item>
+    <item>QP Override</item>
+    <item>Slice and Rsync</item>
+    <item>Pro Sight</item>
+    <item>MBROI</item>
+  </string-array>
+  <string-array name="QAIP_feature">
     <item>HDR10 to SDR</item>
     <item>HDR10+ to HDR10</item>
     <item>HDR10 to HDR10+</item>
-    <item>ROI</item>
-    <item>QP Override</item>
-    <item>QP Control</item>
-    <item>Slice and Rsync</item>
-    <item>LTR</item>
   </string-array>
 </resources>

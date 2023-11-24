@@ -1,0 +1,2 @@
+QTI video static lib need to paste in this folder from https://github.com/quic/android-on-snapdragon/tree/master/video/libraries
+and add dependencies as : implementation files('libs/QtiVideoExt-release.aar')

@@ -1,7 +1,15 @@
+
+/*==============================================================================
+ *  Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ *   SPDX-License-Identifier: Apache-2.0
+ *===============================================================================
+ */
+
 package com.example.VideoSampleApp;
 
 import static com.example.VideoSampleApp.MainActivity.TIMEOUT_USEC;
 
+import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
@@ -19,13 +27,20 @@ public class SdrDecode {
   private final MediaCodec.BufferInfo Decodecinfo = new MediaCodec.BufferInfo();
   private final MediaCodec.BufferInfo Encodecinfo = new MediaCodec.BufferInfo();
   boolean CodecError = false, mDecodeoutputDone = false, mDecodeinputDone = false;
-  private int D_InputFrame = 0, D_OutputFrame = 0, E_OutputFrame = 0, mBitrate, I_FRAME_INTERVAL, mTrackID = -1;
+  private final int flag = 0;
+  private int D_InputFrame = 0;
+  private int D_OutputFrame = 0;
+  private int E_OutputFrame = 0;
+  private int mBitrate;
+  private int I_FRAME_INTERVAL;
+  private int mTrackID = -1;
   private String mime = null, mInput;
-  private Surface E_Surface = null;
+  private Surface D_Surface = null;
   private MediaCodec mEncodec = null, mDecodec = null;
   private MediaExtractor extractor;
   private MediaFormat format = null, EncoderFormat, DecoderFormat;
   private MediaMuxer mMuxer;
+  private GFXSurface D_GFXSource;
 
   SdrDecode(MainActivity activity) {
     mainActivity = activity;
@@ -39,12 +54,18 @@ public class SdrDecode {
     int muxerFormat = MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4;
     mMuxer = new MediaMuxer(fileOut, muxerFormat);
     createFormat();
+    SetSDR_Decode();
     createCodec();
     start();
     startTrascode();
     release();
   }
 
+  private void SetSDR_Decode() {
+    EncoderFormat.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.HEVCProfileMain);
+    EncoderFormat.setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.HEVCMainTierLevel4);
+    DecoderFormat.setInteger(MediaFormat.KEY_COLOR_TRANSFER_REQUEST, 3);
+  }
   private void createFormat() throws IOException {
     extractor = new MediaExtractor();
     Log.i(TAG, "Input File Path : " + mInput);
@@ -63,8 +84,6 @@ public class SdrDecode {
     EncoderFormat.setFloat(MediaFormat.KEY_I_FRAME_INTERVAL, I_FRAME_INTERVAL);
     EncoderFormat.setInteger(MediaFormat.KEY_BIT_RATE, mBitrate);
     EncoderFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-    EncoderFormat.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.HEVCProfileMain);
-    EncoderFormat.setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.HEVCMainTierLevel4);
   }
 
   private void createCodec() throws IOException {
@@ -73,7 +92,7 @@ public class SdrDecode {
     mEncodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_HEVC);
   }
 
-  private void startTrascode() {
+  private void startTrascode() throws Exception {
     while (!CodecError) {
       Log.i(TAG, D_InputFrame + " D_InputFrame :: D_OutputFrame " + D_OutputFrame + " :: E_OutputFrame :: " + E_OutputFrame);
       if (!mDecodeinputDone) Decodeinput();
@@ -89,9 +108,14 @@ public class SdrDecode {
 
   private void start() throws Exception {
     mEncodec.configure(EncoderFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-    E_Surface = mEncodec.createInputSurface();
-    if (!E_Surface.isValid()) throw new Exception("Encodec Surface is not valid");
-    mDecodec.configure(DecoderFormat, E_Surface, null, 0);
+    Surface e_Surface = mEncodec.createInputSurface();
+    if (!e_Surface.isValid()) throw new Exception("Encodec Surface is not valid");
+    GFXSurface e_GFXSource = new GFXSurface(e_Surface);
+    e_GFXSource.makeCurrent();
+
+    D_GFXSource = new GFXSurface();
+    D_Surface = D_GFXSource.createInputSurface();
+    mDecodec.configure(DecoderFormat, D_Surface, null, flag);
     mDecodec.start();
     mEncodec.start();
 
@@ -139,7 +163,7 @@ public class SdrDecode {
     }
   }
 
-  private void Decodeoutput() {
+  private void Decodeoutput() throws Exception {
     int mDecodecoutIndex = mDecodec.dequeueOutputBuffer(Decodecinfo, TIMEOUT_USEC);
     switch (mDecodecoutIndex) {
       case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
@@ -154,7 +178,14 @@ public class SdrDecode {
       default:
         mDecodec.getOutputBuffer(mDecodecoutIndex);
         D_OutputFrame++;
-        mDecodec.releaseOutputBuffer(mDecodecoutIndex, E_Surface != null);
+        boolean doRender = (Decodecinfo.size != 0);
+        mDecodec.releaseOutputBuffer(mDecodecoutIndex, D_Surface != null);
+        if (doRender) {
+          SurfaceTexture texture = D_GFXSource.awaitNewImage();
+          D_GFXSource.drawImage();
+          GFXSurface.setPresentationTime(Decodecinfo.presentationTimeUs * 1000);
+          GFXSurface.swapBuffers();
+        }
         break;
     }
     if ((Decodecinfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
@@ -175,7 +206,7 @@ public class SdrDecode {
     int sampleSize = extractor.readSampleData(dstBuf, 0);
     D_InputFrame++;
     if (sampleSize < 0) {
-      Log.w(TAG, "Sending EOS on input last frame");
+      Log.i(TAG, "Sending EOS on input last frame");
       flag = MediaCodec.BUFFER_FLAG_END_OF_STREAM;
       mDecodeinputDone = true;
       sampleSize = 0;

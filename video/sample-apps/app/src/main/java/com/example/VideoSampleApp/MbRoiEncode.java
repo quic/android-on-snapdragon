@@ -14,6 +14,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaMuxer;
 import android.os.Bundle;
 import android.util.Log;
@@ -25,14 +26,15 @@ import java.util.List;
 
 import qti.video.QMediaExtensions;
 
-public class LtrEncode {
-  private final String TAG = "QP_Control";
+public class MbRoiEncode {
+  private final String TAG = "MBROI_ENCODER";
   private final MainActivity mainActivity;
   private final MediaCodec.BufferInfo Decodecinfo = new MediaCodec.BufferInfo();
   private final MediaCodec.BufferInfo Encodecinfo = new MediaCodec.BufferInfo();
   List<String> supportedExtensions;
   boolean CodecError = false, mDecodeoutputDone = false, mDecodeinputDone = false;
   private final int flag = 0;
+  Integer videoWidth = 0, videoHeight = 0;
   private int D_InputFrame = 0;
   private int D_OutputFrame = 0;
   private int E_OutputFrame = 0;
@@ -47,12 +49,12 @@ public class LtrEncode {
   private MediaMuxer mMuxer;
   private GFXSurface D_GFXSource;
 
-  LtrEncode(MainActivity activity) {
+  MbRoiEncode(MainActivity activity) {
     mainActivity = activity;
   }
 
-  void runLTR(String fileInput, String fileOut, int Bitrate, int FRAME_INTERVAL)
-      throws Exception {
+  void runMbROIEncoder(String fileInput, String fileOut, int Bitrate, int FRAME_INTERVAL)
+          throws Exception {
     this.mInput = fileInput;
     mBitrate = Bitrate;
     I_FRAME_INTERVAL = FRAME_INTERVAL;
@@ -64,12 +66,30 @@ public class LtrEncode {
     startTrascode();
     release();
   }
+  int qpBiasMapSize = -1;
+  Bundle MBROIInfo;
+  byte[] qpBiasMap;
+  private void setROI(int MBSideLength) {
+    if ( qpBiasMapSize == -1) {
+      // Make ROI macro-block for frame
+      qpBiasMapSize = align(videoWidth, videoHeight, MBSideLength);
+      qpBiasMap = new byte[qpBiasMapSize];
+      MBROIInfo = new Bundle();
+    }
+    for(int i = 0; i < qpBiasMapSize; i++) {
+      qpBiasMap[i] = (byte) (0+128);
+    }
+    // Enable ROI for particular macro-block
+    qpBiasMap[10] = (byte) (30+128);
+    MBROIInfo.putInt("vendor.qti-ext-enc-roi-mbmap-info.mb_side_length", MBSideLength);
+    MBROIInfo.putByteArray("vendor.qti-ext-enc-roi-mbmap-info.qp_bias_map", qpBiasMap);
 
-  private void setLTR() {
-    Bundle ERInfo = new Bundle();
-    ERInfo.putInt(QMediaExtensions.KEY_LTR_MARK_FRAME, 20);
-    ERInfo.putInt(QMediaExtensions.KEY_LTR_USE_FRAME, 20);
-    ERInfo.putInt(QMediaExtensions.KEY_LTR_RESPONSE, 20);
+  }
+
+  private int align(Integer videoHeight, int videoWidth, int MBSideLength) {
+    videoHeight = videoHeight + videoHeight % MBSideLength;
+    videoWidth = videoWidth + videoWidth % MBSideLength;
+    return (videoWidth / MBSideLength) * (videoHeight / MBSideLength);
   }
 
   private void createFormat() throws IOException {
@@ -82,6 +102,11 @@ public class LtrEncode {
       mime = format.getString(MediaFormat.KEY_MIME);
       if (mime.startsWith("video/")) {
         extractor.selectTrack(i);
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        retriever.setDataSource(mInput);
+        videoWidth = Integer.valueOf(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
+        videoHeight = Integer.valueOf(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
+        retriever.release();
         break;
       }
     }
@@ -92,7 +117,7 @@ public class LtrEncode {
     EncoderFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
     EncoderFormat.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.HEVCProfileMain);
     EncoderFormat.setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.HEVCMainTierLevel4);
-    EncoderFormat.setInteger(QMediaExtensions.KEY_LTR_MAX_FRAMES, 6);
+    EncoderFormat.setInteger(MediaFormat.KEY_BIT_RATE, mBitrate);
   }
 
   private void createCodec() throws IOException {
@@ -107,8 +132,8 @@ public class LtrEncode {
       Log.i(TAG, D_InputFrame + " D_InputFrame :: D_OutputFrame " + D_OutputFrame + " :: E_OutputFrame :: " + E_OutputFrame);
       if (!mDecodeinputDone) Decodeinput();
       if (!mDecodeoutputDone) Decodeoutput();
-      if (D_InputFrame > 0 && D_InputFrame < 10)
-        setLTR();
+      if (D_InputFrame > 10 && D_InputFrame < 20)
+        setROI(16);
       if ((Encodecinfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
         Log.w(TAG, "Encodecinfo OutputBuffer BUFFER_FLAG_END_OF_STREAM");
         break;
@@ -119,9 +144,9 @@ public class LtrEncode {
   }
 
   private void start() throws Exception {
-    if (!supportedExtensions.contains(QMediaExtensions.KEY_LTR_MAX_FRAMES))
-      throw new Exception("KEY_LTR_MAX_FRAMES Not supported ");
-
+    if (!supportedExtensions.contains(QMediaExtensions.KEY_ROI_INFO_TYPE))
+      throw new Exception("KEY_ROI_INFO_TYPE Not supported ");
+    EncoderFormat.setString(QMediaExtensions.KEY_ROI_INFO_TYPE, "rect");
     mEncodec.configure(EncoderFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
     Surface e_Surface = mEncodec.createInputSurface();
     if (!e_Surface.isValid()) throw new Exception("Encodec Surface is not valid");

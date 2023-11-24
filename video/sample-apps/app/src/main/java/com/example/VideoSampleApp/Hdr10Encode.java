@@ -1,3 +1,10 @@
+
+/*==============================================================================
+ *  Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ *   SPDX-License-Identifier: Apache-2.0
+ *===============================================================================
+ */
+
 package com.example.VideoSampleApp;
 
 import static com.example.VideoSampleApp.MainActivity.TIMEOUT_USEC;
@@ -20,7 +27,13 @@ public class Hdr10Encode {
   private final MediaCodec.BufferInfo Decodecinfo = new MediaCodec.BufferInfo();
   private final MediaCodec.BufferInfo Encodecinfo = new MediaCodec.BufferInfo();
   boolean CodecError = false, mDecodeoutputDone = false, mDecodeinputDone = false;
-  private int D_InputFrame = 0, D_OutputFrame = 0, E_OutputFrame = 0, mBitrate, I_FRAME_INTERVAL, mTrackID = -1, flag = 0;
+  private int flag = 0;
+  private int D_InputFrame = 0;
+  private int D_OutputFrame = 0;
+  private int E_OutputFrame = 0;
+  private int mBitrate;
+  private int I_FRAME_INTERVAL;
+  private int mTrackID = -1;
   private String mime = null, mInput;
   private Surface D_Surface = null;
   private MediaCodec mEncodec = null, mDecodec = null;
