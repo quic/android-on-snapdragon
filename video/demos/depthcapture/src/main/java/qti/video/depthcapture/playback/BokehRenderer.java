@@ -17,6 +17,7 @@ import android.os.Message;
 import android.util.Log;
 import android.util.Pair;
 import androidx.annotation.NonNull;
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;

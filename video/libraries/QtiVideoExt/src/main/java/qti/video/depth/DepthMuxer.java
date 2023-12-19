@@ -8,7 +8,6 @@
 package qti.video.depth;
 
 import android.media.MediaCodec;
-import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.util.Log;

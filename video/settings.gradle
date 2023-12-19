@@ -16,3 +16,4 @@ rootProject.name = "QtiVideoExt"
 include ':libraries:QtiVideoExt'
 include ':demos:app'
 include ':demos:depthcapture'
+include ':sample-apps:app'

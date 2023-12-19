@@ -6,10 +6,10 @@ android {
   namespace 'com.example.VideoSampleApp'
 
   defaultConfig {
-  applicationId "com.example.VideoSampleApp"
-  versionCode 1
-  versionName "1.0"
-  minSdk 30
+      applicationId 'qti.video.VideoSampleApp'
+      versionCode 1
+      versionName '2.1'
+      minSdk 33
   }
 
   buildTypes {
@@ -23,16 +23,15 @@ android {
   targetCompatibility JavaVersion.VERSION_11
   }
   compileSdk 33
-  buildToolsVersion '33.0.2'
+    buildToolsVersion '33.0.1'
 }
 
 dependencies {
-  //implementation files('libs/QtiVideoExt-release.aar')
+    implementation project(path: ':libraries:QtiVideoExt')
   implementation 'androidx.appcompat:appcompat:1.6.1'
   implementation 'com.google.android.material:material:1.8.0'
   implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
   testImplementation 'junit:junit:4.13.2'
   androidTestImplementation 'androidx.test.ext:junit:1.1.5'
   androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-  implementation 'org.gradle.cpp-samples:utilities:v1.0'
 }

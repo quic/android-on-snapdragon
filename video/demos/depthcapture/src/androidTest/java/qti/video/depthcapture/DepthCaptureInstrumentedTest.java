@@ -7,6 +7,13 @@
 
 package qti.video.depthcapture;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import android.content.Context;
 import android.graphics.ImageFormat;
 import android.media.MediaCodec;
@@ -14,9 +21,8 @@ import android.media.MediaFormat;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
-import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
-
+import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.File;
 import java.util.Arrays;
 import org.junit.After;
@@ -25,8 +31,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import qti.video.depth.DepthFormat;
 import qti.video.depthcapture.playback.DepthVideoSource;
-
-import static org.junit.Assert.*;
 
 /**
  * Instrumented test, which will execute on an Android device.

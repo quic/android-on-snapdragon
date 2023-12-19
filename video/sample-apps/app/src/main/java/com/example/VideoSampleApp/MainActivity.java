@@ -27,11 +27,9 @@ import android.widget.GridLayout;
 import android.widget.MediaController;
 import android.widget.TextView;
 import android.widget.VideoView;
-
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;

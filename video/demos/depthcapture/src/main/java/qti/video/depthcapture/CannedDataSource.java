@@ -420,10 +420,11 @@ class CannedDataSource {
           assert (state == State.Initial);
           try {
             onInit();
-            break;
           } catch (IOException e) {
-            throw new RuntimeException(e);
+            Log.e(TAG, "IOException " + e);
+//            throw new RuntimeException(e);
           }
+          break;
         case WHAT_START:
           assert (state == State.Initialized);
           onStart();

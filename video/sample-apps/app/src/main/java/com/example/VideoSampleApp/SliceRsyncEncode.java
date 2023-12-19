@@ -17,11 +17,9 @@ import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.util.Log;
 import android.view.Surface;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-
 import qti.video.QMediaExtensions;
 
 public class SliceRsyncEncode {
