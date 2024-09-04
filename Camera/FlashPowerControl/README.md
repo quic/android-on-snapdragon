@@ -1,3 +1,4 @@
+
 # flashpowercontrol
 
 Flash strength level to use in capture mode i.e. when the applications control flash with either SINGLE or TORCH mode.
