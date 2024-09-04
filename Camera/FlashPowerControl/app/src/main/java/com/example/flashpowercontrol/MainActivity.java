@@ -1,5 +1,5 @@
-# Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 package com.example.flashpowercontrol;
 
 import android.Manifest;
@@ -84,8 +84,6 @@ public class MainActivity extends Activity {
     private CameraManager mCameraManager;
     private ImageReader mImageReader;
     private int mCaptureState;
-    private int mLockRequestHashCode;
-    private int mPrecaptureRequestHashCode;
     private static final int STATE_PREVIEW = 0;
     /**
      * Camera state: Waiting for the focus to be locked.
@@ -345,6 +343,8 @@ public class MainActivity extends Activity {
                         applyCommonSettings(mPreviewRequestBuilder);
                         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, ZERO_WEIGHT_3A_REGION);
                         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, ZERO_WEIGHT_3A_REGION);
+                        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+                                CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
                         mCameraCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), mCaptureCallback, mCameraHandler);
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
@@ -363,9 +363,106 @@ public class MainActivity extends Activity {
     private void applyCommonSettings(CaptureRequest.Builder builder){
         builder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
         builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-
+        builder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
     }
 
+    public void capture(boolean flashOn) {
+        try {
+            final CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+            captureBuilder.addTarget(mImageReader.getSurface());
+            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATION.get(rotation));
+            if(flashOn) {
+                captureBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_SINGLE);//This is setted when flash on
+            }
+            CameraCaptureSession.CaptureCallback CaptureCallback = new CameraCaptureSession.CaptureCallback() {
+                @Override
+                public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
+                    unLockFocus();
+                }
+            };
+            mCameraCaptureSession.stopRepeating();
+            mCameraCaptureSession.capture(captureBuilder.build(), CaptureCallback, null);
+        } catch (CameraAccessException e) {
+            Log.i(TAG,e.toString());
+        }
+    }
+
+    public void captureWithFlashOn(View view) {
+        lockFocus();
+    }
+    public void captureWithFlashOff(View view) {
+        capture(false);
+    }
+    private void lockFocus() {
+        try {
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
+            mCaptureState = STATE_WAITING_AF_LOCK;
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, ZERO_WEIGHT_3A_REGION);
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, ZERO_WEIGHT_3A_REGION);
+            applyCommonSettings(mPreviewRequestBuilder);
+            mCameraCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, mCameraHandler);
+        } catch (CameraAccessException | IllegalStateException e) {
+            Log.e(TAG,"lockFocus exception ="+e);
+        }
+    }
+    private void runPrecaptureSequence() {
+        try {
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+                    CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+            applyCommonSettings(mPreviewRequestBuilder);
+            mCaptureState = STATE_WAITING_PRECAPTURE;
+            mCameraCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, mCameraHandler);
+        } catch (CameraAccessException | IllegalStateException e) {
+            Log.e(TAG,e.toString());
+        }
+    }
+    private void lockExposure() {
+        try {
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_LOCK, Boolean.TRUE);
+            mCaptureState = STATE_WAITING_AE_LOCK;
+            mCameraCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), mCaptureCallback, mCameraHandler);
+        } catch (CameraAccessException | IllegalStateException e) {
+            Log.e(TAG,e.toString());
+        }
+    }
+    private void updateCaptureStateMachine( CaptureResult result) {
+        Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
+        Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+        switch (mCaptureState) {
+            case STATE_PREVIEW: {
+                break;
+            }
+            case STATE_WAITING_AF_LOCK:
+                if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState) {
+                    runPrecaptureSequence();
+                }
+                break;
+            case STATE_WAITING_PRECAPTURE: {
+                if (aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE) {
+                    lockExposure();
+                }
+                break;
+            }
+            case STATE_WAITING_AE_LOCK: {
+                if (aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_LOCKED ) {
+                    mCaptureState = STATE_PICTURE_TAKEN;
+                    capture(true);
+                }else if( aeState == CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED ||
+                        aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE){
+                    mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+                            CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_CANCEL);
+                    try {
+                        mCameraCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, mCameraHandler);
+                    } catch (CameraAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                }
+                break;
+            }
+        }
+    }
 
     private void unLockFocus() {
         Log.i(TAG,"unLockFocus");
@@ -465,6 +562,34 @@ public class MainActivity extends Activity {
             if(writeFile(fileName, data))
                 Toast.makeText(mContext, "Image Saved!", Toast.LENGTH_SHORT).show();
             mImage.close();
+        }
+    }
+
+    public int getMaxFlashLevel() {
+        int max = 0;
+        try {
+            max = mCameraManager.getCameraCharacteristics(mCameraId).get(CameraCharacteristics.FLASH_SINGLE_STRENGTH_MAX_LEVEL);
+        }catch(NoSuchFieldError e){
+            Log.i(TAG,"NoSuchFieldError e="+e);
+        } catch (CameraAccessException e) {
+            Log.i(TAG,"CameraAccessException e="+e);
+        }
+        return max;
+    }
+    //Only setFlashLevel when flash is opened.And only set FLASH_MODE_SINGLE when Snapshot
+    private void setFlashLevel(CaptureRequest.Builder request) {
+        int maxPower = getMaxFlashLevel();
+        if (maxPower <= 0) {
+            Toast.makeText(MainActivity.this, "Don't support flashPowerControl because MAX_LEVEL below 1", Toast.LENGTH_SHORT).show();
+        } else {
+            try {
+                request.set(CaptureRequest.FLASH_STRENGTH_LEVEL, maxPower);
+                request.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+                //Note : If you set SENSOR_EXPOSURE_TIME and SENSOR_SENSITIVITY ,you need set CONTROL_AE_MODE_OFF
+                Log.i(TAG, "setFlashLevel level=" + maxPower);
+            } catch (NoSuchFieldError e) {
+                Log.i(TAG, "NoSuchFieldErrore=" + e);
+            }
         }
     }
 

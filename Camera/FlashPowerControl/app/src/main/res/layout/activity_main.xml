@@ -4,7 +4,8 @@ xmlns:android="http://schemas.android.com/apk/res/android"
 xmlns:tools="http://schemas.android.com/tools"
 android:layout_width="match_parent"
 android:layout_height="match_parent"
-tools:context=".MainActivity">
+    android:orientation="vertical"
+    tools:context=".MainActivity">
 
 <com.example.flashpowercontrol.AutoFitTextureView
     android:layout_width="match_parent"
@@ -12,14 +13,26 @@ tools:context=".MainActivity">
     android:id="@+id/textureView"
     android:layout_centerHorizontal="true"
     android:layout_centerVertical="true"/>
-
-    <Button
-        android:id="@+id/photoButton"
+    <LinearLayout
+        android:id="@+id/linearlayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
+        android:orientation="horizontal">
+    <Button
+        android:id="@+id/snap_flashon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:onClick="captureWithFlashOn"
-        android:text="Snapshot_FlashON" />
+        android:text="Snap_FlashON" />
+
+    <Button
+        android:id="@+id/snap_flashoff"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="captureWithFlashOff"
+        android:text="Snap_FlashOFF" />
+    </LinearLayout>
 
 </RelativeLayout>
