@@ -41,6 +41,7 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
@@ -85,6 +86,7 @@ public class MainActivity extends Activity {
     private CameraManager mCameraManager;
     private ImageReader mImageReader;
     private int mCaptureState;
+    private TextView mLowLightText;
     private static final int STATE_PREVIEW = 0;
     /**
      * Camera state: Waiting for the focus to be locked.
@@ -152,6 +154,9 @@ public class MainActivity extends Activity {
         @Override
         public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
             updateCaptureStateMachine(result);
+            MainActivity.this.runOnUiThread(() -> {
+                updateLowLightText(result);
+            });
         }
     };
 
@@ -169,6 +174,7 @@ public class MainActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
         mTextureView = findViewById(R.id.textureView);
+        mLowLightText = findViewById(R.id.lowlightboost_text);
     }
 
     private boolean hasCameraPermission() {
@@ -344,6 +350,9 @@ public class MainActivity extends Activity {
                         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, ZERO_WEIGHT_3A_REGION);
                         mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
                                 CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
+                        if(isLowLightBoostSupported()) {
+                            applyLowLightBoost(mPreviewRequestBuilder);
+                        }
                         mCameraCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), mCaptureCallback, mCameraHandler);
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
@@ -471,8 +480,6 @@ public class MainActivity extends Activity {
                     CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_CANCEL);
             mCameraCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, mCameraHandler);
             mCaptureState = STATE_PREVIEW;
-
-
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_LOCK, Boolean.FALSE);
            applyCommonSettings(mPreviewRequestBuilder);
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, ZERO_WEIGHT_3A_REGION);
@@ -480,6 +487,9 @@ public class MainActivity extends Activity {
             mPreviewRequestBuilder.set(
                     CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
                     CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE);
+            if(isLowLightBoostSupported()) {
+                applyLowLightBoost(mPreviewRequestBuilder);
+            }
             mCameraCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), mCaptureCallback, mCameraHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -564,8 +574,64 @@ public class MainActivity extends Activity {
         }
     }
 
-
-
+    public boolean isLowLightBoostSupported() {
+        boolean isSupported = false;
+        int[]aeModes = null;
+        try {
+            aeModes = mCameraManager.getCameraCharacteristics(mCameraId).get(CameraCharacteristics.CONTROL_AE_AVAILABLE_MODES);
+        } catch (CameraAccessException e) {
+            Log.d(TAG," CameraAccessException e ="+e);
+        }
+        if(aeModes == null){
+            return  false;
+        }
+        for(int aeMode:aeModes){
+            Log.d(TAG," aemode="+aeMode);
+            if(aeMode == CameraMetadata.CONTROL_AE_MODE_ON_LOW_LIGHT_BOOST_BRIGHTNESS_PRIORITY){
+                isSupported = true;
+                break;
+            }
+        }
+        if(isSupported){
+            Range<Float> lumRange = null;
+            try {
+                lumRange = mCameraManager.getCameraCharacteristics(mCameraId).get(CameraCharacteristics.CONTROL_LOW_LIGHT_BOOST_INFO_LUMINANCE_RANGE);
+            } catch (CameraAccessException e) {
+                Log.d(TAG," CameraAccessException e ="+e);
+            }
+            isSupported = lumRange != null;
+            Log.d(TAG," lumRange="+lumRange);
+        }
+        return isSupported;
+    }
+    private void applyLowLightBoost(CaptureRequest.Builder request){
+        if(!isLowLightBoostSupported()){
+            Toast.makeText(MainActivity.this, "Don't support LowLightBoost!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+            request.set(CaptureRequest.CONTROL_AE_MODE,
+                    CameraMetadata.CONTROL_AE_MODE_ON_LOW_LIGHT_BOOST_BRIGHTNESS_PRIORITY);
+        }
+    public void updateLowLightText(CaptureResult result) {
+       if(isLowLightBoostSupported()){
+            try {
+                int aemode = result.get(CaptureResult.CONTROL_AE_MODE);
+                int lowLightBoostState = result.get(CaptureResult.CONTROL_LOW_LIGHT_BOOST_STATE);
+                if (lowLightBoostState == CameraMetadata.CONTROL_LOW_LIGHT_BOOST_STATE_ACTIVE) {
+                    mLowLightText.setText("LowLightBoost_Active");
+                } else if (lowLightBoostState == CameraMetadata.CONTROL_LOW_LIGHT_BOOST_STATE_INACTIVE) {
+                    mLowLightText.setText("LowLightBoost_InActive");
+                } else {
+                    mLowLightText.setText("LowLightBoost_Unknown");
+                }
+            } catch (NullPointerException e) {
+                mLowLightText.setText("LowLightBoost_Unknown");
+            }
+            mLowLightText.setVisibility(View.VISIBLE);
+        } else {
+            mLowLightText.setVisibility(View.INVISIBLE);
+        }
+    }
 
 
 }
