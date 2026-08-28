@@ -45,10 +45,6 @@ public class DepthInstrumentedTest {
 
   static final String TAG = "DepthInstrumentedTest";
 
-  static final String CLIP_SERVER_LOCATION
-      = "\\\\armory\\videocoreswdev1\\Dropbox\\videoNext"
-      + "\\Lanai\\depth\\unittest_data";
-
   private static Context context;
   // /storage/emulated/0/Android/data/qti.video.test/files
   private static File externalFileDir;
@@ -97,8 +93,7 @@ public class DepthInstrumentedTest {
     if (!origClipWithNoDepth.exists()) {
       String msg = "test clip [" + origClipWithNoDepth.getName()
           + "] doesn't exist, please push it to device\n"
-          + "cmd: adb push "
-          + CLIP_SERVER_LOCATION + "\\" + origClipWithNoDepth.getName()
+          + "cmd: adb push <local-test-media-dir>/" + origClipWithNoDepth.getName()
           + " " + origClipWithNoDepth.getAbsolutePath();
       fail(msg);
     }
@@ -107,8 +102,7 @@ public class DepthInstrumentedTest {
     if (!videoDepthAudioMetaClip.exists()) {
       String msg = "test clip [" + videoDepthAudioMetaClip.getName()
           + "] doesn't exist, please push it to device\n"
-          + "cmd: adb push "
-          + CLIP_SERVER_LOCATION + "\\" + videoDepthAudioMetaClip.getName()
+          + "cmd: adb push <local-test-media-dir>/" + videoDepthAudioMetaClip.getName()
           + " " + videoDepthAudioMetaClip.getAbsolutePath();
       fail(msg);
     }
