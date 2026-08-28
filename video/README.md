@@ -73,4 +73,4 @@ Report sensitive or not-yet-public vulnerabilities through Qualcomm Product Secu
 
 ## License
 
-QtiVideoExt is licensed under the Apache-2.0 license. See [LICENSE.txt](LICENSE.txt) for the full license text.
+QtiVideoExt is licensed under the BSD-3-Clause license. See [LICENSE.txt](LICENSE.txt) for the full license text.
