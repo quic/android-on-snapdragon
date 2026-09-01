@@ -1,7 +1,7 @@
 /*
  **************************************************************************************************
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * SPDX-License-Identifier: BSD-3-Clause
  **************************************************************************************************
  */
 
@@ -31,7 +31,7 @@ public final class MockCameraSource implements CameraSource {
   static final int AVSYNC_THRESHOLD_MS = 10;
   static final boolean DISABLE_AVSYNC = true;
 
-  // push clips from \\hw-lubiny-lv\Public\depth
+  // Push approved public test clips into the app-specific external files directory.
   /**
    * IMG_0400_remuxed.mp4: total 4 tracks
    *     0 - video avc 3840x2160

@@ -1,7 +1,7 @@
 /*
  **************************************************************************************************
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * SPDX-License-Identifier: BSD-3-Clause
  **************************************************************************************************
  */
 
@@ -26,7 +26,7 @@ import qti.video.depthcapture.playback.DepthPlaybackActivity;
 
 /*
 Input file: /storage/emulated/0/Android/data/qti.video.depthcapture/files/IMG_0400_remuxed.mp4
-adb push \\hw-lubiny-lv\Public\depth\IMG_0400_remuxed.mp4 \
+adb push <local-test-media-dir>/IMG_0400_remuxed.mp4 \
   /storage/emulated/0/Android/data/qti.video.depthcapture/files/
 Output file: /storage/emulated/0/Android/data/qti.video.depthcapture/files/depth_capture_output.mp4
 
