@@ -33,4 +33,5 @@ jobs:
           gradle-version: 7.6.4
 
       - name: Run checks
+        working-directory: video
         run: gradle check --no-daemon

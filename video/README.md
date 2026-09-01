@@ -65,12 +65,12 @@ Before opening a pull request:
 - Include DCO signoff on all commits.
 - Confirm no internal-only information is included.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution details.
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution details.
 
 ## Security
 
-Report sensitive or not-yet-public vulnerabilities through Qualcomm Product Security. See [SECURITY.md](SECURITY.md) for details.
+Report sensitive or not-yet-public vulnerabilities through Qualcomm Product Security. See [SECURITY.md](../SECURITY.md) for details.
 
 ## License
 
-QtiVideoExt is licensed under the BSD-3-Clause license. See [LICENSE.txt](LICENSE.txt) for the full license text.
+QtiVideoExt is licensed under the BSD-3-Clause license. See [LICENSE.txt](../LICENSE.txt) for the full license text.
